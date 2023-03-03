@@ -50,6 +50,7 @@ RCT_EXPORT_MODULE()
              @"connection",
              @"data",
              @"close",
+             @"secureConnect",
              @"error"];
 }
 
@@ -107,12 +108,39 @@ RCT_EXPORT_METHOD(connect:(nonnull NSNumber*)cId
     }
 }
 
+RCT_EXPORT_METHOD(connectTls:(nonnull NSNumber*)cId
+                  host:(NSString *)host
+                  port:(int)port
+                  withOptions:(NSDictionary *)options)
+{
+    TcpSocketClient *client = _clients[cId];
+    if (!client) {
+        client = [self createSocket:cId];
+    }
+    
+    NSError *error = nil;
+    if (![client connect:host port:port withOptions:options useSsl:YES error:&error])
+    {
+        [self onError:client withError:error];
+        return;
+    }
+}
+
+RCT_EXPORT_METHOD(upgradeToSecure:(nonnull NSNumber*)cId
+                  host:(NSString *)host
+                  port:(int)port
+                  callback:(RCTResponseSenderBlock)callback) {
+    TcpSocketClient* client = [self findClient:cId];
+    if (!client) return;
+    [client upgradeToSecure:host port:port callback:callback];
+}
+
 RCT_EXPORT_METHOD(write:(nonnull NSNumber*)cId
                   string:(NSString *)base64String
                   callback:(RCTResponseSenderBlock)callback) {
     TcpSocketClient* client = [self findClient:cId];
     if (!client) return;
-
+    
     // iOS7+
     // TODO: use https://github.com/nicklockwood/Base64 for compatibility with earlier iOS versions
     NSData *data = [[NSData alloc] initWithBase64EncodedString:base64String options:0];
@@ -150,9 +178,15 @@ RCT_EXPORT_METHOD(listen:(nonnull NSNumber*)cId
                        body:@{ @"id": client.id, @"address" : [client getAddress] }];
 }
 
+- (void)onSecureConnect:(TcpSocketClient*) client
+{
+    [self sendEventWithName:@"secureConnect"
+                       body:@{ @"id": client.id }];
+}
+
 -(void)onConnection:(TcpSocketClient *)client toClient:(NSNumber *)clientID {
     _clients[client.id] = client;
-
+    
     [self sendEventWithName:@"connection"
                        body:@{ @"id": clientID, @"info": @{ @"id": client.id, @"address" : [client getAddress] } }];
 }

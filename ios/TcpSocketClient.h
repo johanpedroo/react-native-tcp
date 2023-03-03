@@ -31,10 +31,7 @@ typedef enum RCTTCPError RCTTCPError;
 - (void)onData:(NSNumber *)clientID data:(NSData *)data;
 - (void)onClose:(TcpSocketClient*)client withError:(NSError *)err;
 - (void)onError:(TcpSocketClient*)client withError:(NSError *)err;
-- (NSNumber*)getNextTag;
-- (void)setPendingSend:(RCTResponseSenderBlock)callback forKey:(NSNumber *)key;
-- (RCTResponseSenderBlock)getPendingSend:(NSNumber *)key;
-- (void)dropPendingSend:(NSNumber *)key;
+- (void)onSecureConnect:(TcpSocketClient*)client;
 - (NSNumber*)getNextId;
 
 @end
@@ -43,6 +40,7 @@ typedef enum RCTTCPError RCTTCPError;
 
 @property (nonatomic, retain) NSNumber * id;
 @property (nonatomic, weak) id<SocketClientDelegate> clientDelegate;
+@property (nonatomic) BOOL useSsl;
 
 ///---------------------------------------------------------------------------------------
 /// @name Class Methods
@@ -66,9 +64,13 @@ typedef enum RCTTCPError RCTTCPError;
  * @param port
  * @param host ip address
  * @param options NSDictionary which can have @"localAddress" and @"localPort" to specify the local interface
+ * @param useSsl BOOL Use SSL/TLS connection
  * @return true if connected, false if there was an error
  */
+- (BOOL)connect:(NSString *)host port:(int)port withOptions:(NSDictionary *)options useSsl:(BOOL)useSsl error:(NSError **)error;
 - (BOOL)connect:(NSString *)host port:(int)port withOptions:(NSDictionary *)options error:(NSError **)error;
+
+- (void)upgradeToSecure:(NSString *)host port:(int)port callback:(RCTResponseSenderBlock) callback;
 
 /**
  * Starts listening on a local host and port
@@ -101,6 +103,9 @@ typedef enum RCTTCPError RCTTCPError;
  * destroy client
  */
 - (void)destroy;
+
+- (void)socket:(GCDAsyncSocket *)sock didReceiveTrust:(SecTrustRef)trust
+completionHandler:(void (^)(BOOL shouldTrustPeer))completionHandler;
 
 
 @end
